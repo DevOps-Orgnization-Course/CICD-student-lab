@@ -1,69 +1,92 @@
 # Lab — Build the CI and CD pipelines
 
-The `tasks-api` app and all its tests are already written. **You will write the two pipelines** that make GitHub test and release it automatically. Work through Part A, then Part B.
+The `tasks-api` app and its tests are already written and pass locally. You'll build the two pipelines in `.github/workflows/`. **CI is 4 parts, CD is 4 parts — about 5–10 minutes each.** After each part: commit, push, open the **Actions** tab, and check the result before moving on.
 
-Everything you type is in `.github/workflows/`. Edit the files in VS Code, commit, push, and watch the **Actions** tab.
-
----
-
-## Part A — CI (Continuous Integration): `ci.yml`
-
-**Goal:** every push and pull request automatically installs the app, runs the tests, and checks coverage.
-
-### Steps to implement
-1. **Triggers** — run on push to `main` and on every `pull_request`.
-2. **A job** named `test` that runs on `ubuntu-latest`.
-3. Steps in order:
-   - Check out the code — `actions/checkout@v4`
-   - Set up Node.js 20 — `actions/setup-node@v4` with `node-version: 20`
-   - Install dependencies — `npm install`
-   - Run unit tests — `npm run test:unit`
-   - Run API tests — `npm run test:api`
-   - Run coverage — `npm run test:coverage` (this fails if coverage drops below the thresholds in `package.json`)
-   - Upload the `coverage/` folder — `actions/upload-artifact@v4`
-
-### Done when
-- Push a branch and open a PR.
-- The **Actions** tab shows **CI / test** running and passing (green).
-- The run has a downloadable **coverage-report** artifact.
-
-### Hints
-- `on:` takes `push:` (with `branches: [ main ]`) and `pull_request:`.
-- A step that runs a command uses `run:`; a step that uses a prebuilt action uses `uses:`.
-- Break a test in `src/validate.js`, push, and confirm CI turns **red** — then fix it.
+First confirm the app works:
+```bash
+npm install
+npm run test:unit
+npm run test:api
+npm run test:coverage
+```
 
 ---
+---
 
-## Part B — CD (Continuous Delivery): `cd.yml`
+# CI — `.github/workflows/ci.yml`
 
-**Goal:** when *you* decide, a manual run packages the app and publishes a versioned GitHub Release.
+## CI Part 1 — Trigger and set up the runner  (~7 min)
+**Goal:** the workflow runs and prepares a machine.
+**Do:** in `ci.yml` add:
+- a `name`, and `on:` with **push to `main`** and **pull_request**
+- one job `test` on `ubuntu-latest`
+- steps: **checkout** (`actions/checkout@v4`) and **set up Node 20** (`actions/setup-node@v4`)
+**Check:** push → Actions shows the run going green (it does nothing useful yet, but it runs).
 
-### Steps to implement
-1. **Trigger** — `workflow_dispatch` with an input `version` (default `1.0.0`).
-2. **Permissions** — `contents: write` (needed to create a tag/Release).
-3. A job `release` on `ubuntu-latest` that:
-   - Checks out, sets up Node 20, installs deps, runs `npm test`.
-   - Builds a zip of `src package.json README.md` into `dist/`.
-   - Creates a tag `vX.Y.Z` and a GitHub Release with the zip attached.
+## CI Part 2 — Install and run the tests  (~8 min)
+**Goal:** the tests run in CI.
+**Do:** add steps:
+- `run: npm install`
+- `run: npm run test:unit`
+- `run: npm run test:api`
+**Check:** the logs show dependencies installing and both test suites passing.
 
-### Hints
-- Read the input as `${{ github.event.inputs.version }}`.
-- The runner already has the `gh` CLI. With `GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` set on the step, you can run:
-  ```
-  gh release create "vVERSION" path/to/zip --title "..." --notes "..."
-  ```
-- `gh release create` will create the tag for you.
+## CI Part 3 — Add the coverage gate  (~7 min)
+**Goal:** fail the build if coverage is too low.
+**Do:** add a step `run: npm run test:coverage` (thresholds are already in `package.json`).
+**Check:** the coverage table prints and the step is green (we're above the thresholds).
 
-### Done when
-- Actions tab -> **CD** -> **Run workflow** -> enter a version -> Run.
-- A new **Release** (e.g. `v1.0.0`) appears with the zip attached, and a matching **tag** exists.
+## CI Part 4 — Save the report and prove it works  (~8 min)
+**Goal:** keep the report, and feel why CI matters.
+**Do:** add a step using `actions/upload-artifact@v4` with `name: coverage-report` and `path: coverage/`. Then **break a test** in `src/validate.js`, push (watch it go **red**), undo, push (**green**).
+**Check:** the run page has a **coverage-report** artifact, and you saw red → green.
+
+> ✅ CI done: every push/PR installs, runs unit + API tests, enforces coverage, saves the report.
+
+---
+---
+
+# CD — `.github/workflows/cd.yml`  (do this after CI is green)
+
+## CD Part 1 — Manual trigger with a version  (~7 min)
+**Goal:** you can run it on demand and pass a version.
+**Do:** set `on: workflow_dispatch:` with an input `version` (`required: true`, `default: "1.0.0"`). Add `permissions: contents: write`. Add a job `release` on `ubuntu-latest` with one step that echoes `${{ github.event.inputs.version }}`.
+**Check:** Actions → CD → **Run workflow** → type a version → the log echoes it.
+
+## CD Part 2 — Test before releasing  (~7 min)
+**Goal:** never ship a broken build.
+**Do:** add steps: checkout, set up Node 20, `npm install`, `npm test`.
+**Check:** the run installs and runs the full test suite.
+
+## CD Part 3 — Build the package  (~7 min)
+**Goal:** produce the shippable zip.
+**Do:** add a step:
+```
+mkdir -p dist
+zip -r "dist/tasks-api-${{ github.event.inputs.version }}.zip" src package.json README.md
+```
+**Check:** the log shows the zip being created.
+
+## CD Part 4 — Create the tag and Release  (~8 min)
+**Goal:** publish a versioned release with the zip attached.
+**Do:** add a step with `env: GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` that runs:
+```
+gh release create "v${{ github.event.inputs.version }}" \
+  "dist/tasks-api-${{ github.event.inputs.version }}.zip" \
+  --target "${{ github.sha }}" \
+  --title "tasks-api v${{ github.event.inputs.version }}" \
+  --notes "Released by CD."
+```
+**Check:** the repo's **Releases** shows `v1.0.0` with the zip; **Tags** shows the tag. Run again with `1.0.1` to show versioning.
 
 ---
 
 ## Checklist
-- [ ] CI runs on push and PR
-- [ ] CI runs unit tests, API tests, and coverage
-- [ ] CI uploads the coverage artifact
-- [ ] I saw CI go red on a broken test, then green after fixing
-- [ ] CD runs manually with a version input
-- [ ] CD publishes a Release with a zip and a tag
+- [ ] CI Part 1 — triggers + checkout + Node
+- [ ] CI Part 2 — install + unit + API tests
+- [ ] CI Part 3 — coverage gate
+- [ ] CI Part 4 — artifact + saw red → green
+- [ ] CD Part 1 — manual trigger + version input
+- [ ] CD Part 2 — tests before release
+- [ ] CD Part 3 — build the zip
+- [ ] CD Part 4 — tag + Release published
