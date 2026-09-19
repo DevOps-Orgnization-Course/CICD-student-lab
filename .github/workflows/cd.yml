@@ -2,10 +2,45 @@ name: CD
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, e.g. 1.0.0'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Not implemented yet
-        run: echo "Implement the CD pipeline - see STUDENT-README.md (Part B)"
+      - name: checkout code
+        uses: actions/checkout@v6
+
+      - name: setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: run tests before realeasing 
+        run: npm run test
+
+      - name: Build the release package
+        run: |
+          mkdir -p dist
+          zip -r "dist/tasks-api${{ github.event.inputs.version }}.zip"
+            src pakage.json README.md
+      
+      - name: Create a tage and release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ github.event.inputs.version }}" \
+            "dist/tasks-api${{ github.event.inputs.version }}.zip" \
+            --target "${GITHUB_SHA}" \
+            --title "tasks-api v${{ github.event.inputs.version }}" \
+            --notes "Release v${{ github.event.inputs.version }}"
