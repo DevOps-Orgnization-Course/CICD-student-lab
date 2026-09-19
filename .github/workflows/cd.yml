@@ -27,12 +27,12 @@ jobs:
         run: npm install
 
       - name: run tests before realeasing 
-        run: npm run test
+        run: npm test
 
       - name: Build the release package
         run: |
           mkdir -p dist
-          zip -r "dist/tasks-api${{ github.event.inputs.version }}.zip"
+          zip -r "dist/tasks-api-${{ github.event.inputs.version }}.zip"\
             src pakage.json README.md
       
       - name: Create a tage and release
