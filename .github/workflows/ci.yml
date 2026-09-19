@@ -1,0 +1,11 @@
+name: CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Not implemented yet
+        run: echo "Implement the CI pipeline - see STUDENT-README.md (Part A)"

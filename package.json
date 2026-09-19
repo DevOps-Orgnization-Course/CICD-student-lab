@@ -1,0 +1,35 @@
+{
+  "name": "tasks-api",
+  "version": "1.0.0",
+  "description": "A small REST API used to demo a full CI + CD pipeline.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "jest",
+    "test:unit": "jest tests/validate.test.js tests/tasksStore.test.js",
+    "test:api": "jest tests/api.test.js",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 75,
+        "functions": 90,
+        "lines": 85,
+        "statements": 85
+      }
+    }
+  }
+}

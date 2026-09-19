@@ -1,0 +1,11 @@
+name: CD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Not implemented yet
+        run: echo "Implement the CD pipeline - see STUDENT-README.md (Part B)"
